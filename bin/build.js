@@ -371,6 +371,7 @@ const getOazaAddressItems = async (prefCode, postalCodeKanaItems, postalCodeRome
 
     const record = [
       prefCode,
+      postalCodeKanaItem['郵便番号'],
       line['都道府県名'],
       postalCodeKanaItem
         ? han2zen(postalCodeKanaItem['都道府県名カナ'])
@@ -396,7 +397,6 @@ const getOazaAddressItems = async (prefCode, postalCodeKanaItems, postalCodeRome
       '',
       Number(line['緯度']),
       Number(line['経度']),
-      Number(postalCodeKanaItem['郵便番号']),
     ]
 
     records[recordKey] = record
@@ -506,6 +506,7 @@ const getGaikuAddressItems = async (prefCode, postalCodeKanaItems, postalCodeRom
     const center = getCenter(recordKey)
     const record = [
       prefCode,
+      postalCodeKanaItem['郵便番号'],
       line['都道府県名'],
       postalCodeKanaItem
         ? han2zen(postalCodeKanaItem['都道府県名カナ'])
@@ -580,7 +581,7 @@ const getAddressItems = async (
 const main = async () => {
   db.serialize(() => {
     db.run('drop table if exists addresses')
-    db.run('create table addresses(都道府県コード text, 都道府県名 text, 都道府県名カナ text, 都道府県名ローマ字 text, 市区町村コード text, 市区町村名 text, 市区町村名カナ text, 市区町村名ローマ字 text, 大字町丁目名 text, 大字町丁目名カナ text, 大字町丁目名ローマ字 text, 小字・通称名 text, 緯度 real, 経度 real, 郵便番号 text)')
+    db.run('create table addresses(郵便番号 text, 都道府県コード text, 都道府県名 text, 都道府県名カナ text, 都道府県名ローマ字 text, 市区町村コード text, 市区町村名 text, 市区町村名カナ text, 市区町村名ローマ字 text, 大字町丁目名 text, 大字町丁目名カナ text, 大字町丁目名ローマ字 text, 小字・通称名 text, 緯度 real, 経度 real)')
   })
 
   const t0 = performance.now()
@@ -621,7 +622,7 @@ const main = async () => {
   const gaiku_outfile = await fs.promises.open(path.join(dataDir, 'latest_gaiku.csv'), 'w')
 
   const sqliteWriterQueue = async.queue(async array => {
-    db.run('insert into addresses(都道府県コード, 都道府県名, 都道府県名カナ, 都道府県名ローマ字, 市区町村コード, 市区町村名, 市区町村名カナ, 市区町村名ローマ字, 大字町丁目名, 大字町丁目名カナ, 大字町丁目名ローマ字, 小字・通称名, 緯度, 経度, 郵便番号) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', ...array)
+    db.run('insert into addresses(郵便番号, 都道府県コード, 都道府県名, 都道府県名カナ, 都道府県名ローマ字, 市区町村コード, 市区町村名, 市区町村名カナ, 市区町村名ローマ字, 大字町丁目名, 大字町丁目名カナ, 大字町丁目名ローマ字, 小字・通称名, 緯度, 経度) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', ...array)
   }, 1)
   const gaiku_outfileWriterQueue = async.queue(async str => {
     await gaiku_outfile.write(str)
