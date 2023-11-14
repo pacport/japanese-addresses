@@ -3,7 +3,6 @@
 const fs = require('fs')
 const path = require('path')
 const https = require('https')
-
 const { promisify } = require('util')
 const async = require('async')
 const unzip = require('unzipper')
@@ -577,11 +576,10 @@ const getAddressItems = async (
   return { towns, gaikuItems }
 }
 
-
 const main = async () => {
   db.serialize(() => {
-    db.run('drop table if exists addresses')
-    db.run('create table addresses(都道府県コード text,郵便番号 text, 都道府県名 text, 都道府県名カナ text, 都道府県名ローマ字 text, 市区町村コード text, 市区町村名 text, 市区町村名カナ text, 市区町村名ローマ字 text, 大字町丁目名 text, 大字町丁目名カナ text, 大字町丁目名ローマ字 text, 小字・通称名 text, 緯度 real, 経度 real)')
+    db.run('drop table if exists addresses2')
+    db.run('create table addresses2(都道府県コード text,郵便番号 text, 都道府県名 text, 都道府県名カナ text, 都道府県名ローマ字 text, 市区町村コード text, 市区町村名 text, 市区町村名カナ text, 市区町村名ローマ字 text, 大字町丁目名 text, 大字町丁目名カナ text, 大字町丁目名ローマ字 text, 小字・通称名 text, 緯度 real, 経度 real)')
   })
 
   const t0 = performance.now()
@@ -622,33 +620,30 @@ const main = async () => {
   const gaiku_outfile = await fs.promises.open(path.join(dataDir, 'latest_gaiku.csv'), 'w')
 
   const sqliteWriterQueue = async.queue(async array => {
-    //If no postal code is available, add
+    // If no postal code is available, add
       if ((/^\d+$/.test(array[1])) === false) {
           let additions = undefined;
-          const district_name_rome = array[10].replace(/\d/g, '').replace(/\s/g, '')
-          const romeItemFindInclude = postalCodeRomeItems.filter(item => item["都道府県名"] === array[1] && item["市区町村名ローマ字"] === array[7] && district_name_rome === item["町域名ローマ字"]);
-
-          if (romeItemFindInclude.length === 1) {
-              additions = romeItemFindInclude[0];
+          const district_name_rome = array[10].replace(/\d+$/, '').replaceAll(" ", "")
+            .replace("SHINMAEDA","SHIMMAEDA")
+            .replace("IYAMAMINAMI","IIYAMAMINAMI")
+            .replace("OGISHINMACHIDORI","OGISHIMMACHIDORI")
+            .replace("'","");
+          const romeItemFindInclude = postalCodeRomeItems.filter(item => item["都道府県名"] === array[1] && item["市区町村名ローマ字"] === array[7] && (district_name_rome === item["町域名ローマ字"].replaceAll(" ", "") || item["町域名ローマ字"]===""));
+          if (romeItemFindInclude && romeItemFindInclude.length === 1) {
+            additions = romeItemFindInclude[0]
+          }else if (romeItemFindInclude.length === 2){
+            additions = romeItemFindInclude[1]
+          }else {
+            console.log("Unexpected find of array: " + array);
           }
-
-          if (!additions) {
-
-              const district_name = array[8].replace(/(一丁目|二丁目|三丁目|四丁目|五丁目|六丁目|七丁目|八丁目|九丁目|十丁目|十一丁目|十二丁目|十三丁目|十四丁目|十五丁目|十六丁目|十七丁目|十八丁目|十九丁目|二十丁目)/, "")
-
-              const kanaItemFindInclude = postalCodeKanaItems.filter(item => item["都道府県名"] === array[1] && item["市区町村名"] === array[5] && district_name === (item["町域名"]));
-              if (kanaItemFindInclude.length === 1) {
-                additions = kanaItemFindInclude[0];
-              } else {
-                  console.log("Unexpected number of kanaItemFindInclude: " + kanaItemFindInclude.length);
-              }
+          if (additions){
+            array.splice(1, 0, additions["郵便番号"]);
+          }else {
+            array.splice(1, 0, "");
           }
-
-          array.splice(1, 0, additions["郵便番号"] || "");
       }
 
-
-    db.run('insert into addresses(都道府県コード, 郵便番号, 都道府県名, 都道府県名カナ, 都道府県名ローマ字, 市区町村コード, 市区町村名, 市区町村名カナ, 市区町村名ローマ字, 大字町丁目名, 大字町丁目名カナ, 大字町丁目名ローマ字, 小字・通称名, 緯度, 経度) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', ...array)
+    db.run('insert into addresses2(都道府県コード, 郵便番号, 都道府県名, 都道府県名カナ, 都道府県名ローマ字, 市区町村コード, 市区町村名, 市区町村名カナ, 市区町村名ローマ字, 大字町丁目名, 大字町丁目名カナ, 大字町丁目名ローマ字, 小字・通称名, 緯度, 経度) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', ...array)
   }, 1)
   const gaiku_outfileWriterQueue = async.queue(async str => {
     await gaiku_outfile.write(str)
@@ -702,6 +697,7 @@ try {
 } catch (error) {
   // already exists
 }
+
 
 if (require.main === module) {
   main().catch(error => {
