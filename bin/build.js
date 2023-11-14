@@ -581,7 +581,7 @@ const getAddressItems = async (
 const main = async () => {
   db.serialize(() => {
     db.run('drop table if exists addresses')
-    db.run('create table addresses(郵便番号 text, 都道府県コード text, 都道府県名 text, 都道府県名カナ text, 都道府県名ローマ字 text, 市区町村コード text, 市区町村名 text, 市区町村名カナ text, 市区町村名ローマ字 text, 大字町丁目名 text, 大字町丁目名カナ text, 大字町丁目名ローマ字 text, 小字・通称名 text, 緯度 real, 経度 real)')
+    db.run('create table addresses(都道府県コード text,郵便番号 text, 都道府県名 text, 都道府県名カナ text, 都道府県名ローマ字 text, 市区町村コード text, 市区町村名 text, 市区町村名カナ text, 市区町村名ローマ字 text, 大字町丁目名 text, 大字町丁目名カナ text, 大字町丁目名ローマ字 text, 小字・通称名 text, 緯度 real, 経度 real)')
   })
 
   const t0 = performance.now()
@@ -622,7 +622,33 @@ const main = async () => {
   const gaiku_outfile = await fs.promises.open(path.join(dataDir, 'latest_gaiku.csv'), 'w')
 
   const sqliteWriterQueue = async.queue(async array => {
-    db.run('insert into addresses(郵便番号, 都道府県コード, 都道府県名, 都道府県名カナ, 都道府県名ローマ字, 市区町村コード, 市区町村名, 市区町村名カナ, 市区町村名ローマ字, 大字町丁目名, 大字町丁目名カナ, 大字町丁目名ローマ字, 小字・通称名, 緯度, 経度) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', ...array)
+    //If no postal code is available, add
+    if ((/^\d+$/.test(array[1])) === false) {
+      let additions = undefined;
+      const romeItemFindInclude = postalCodeRomeItems.filter(item => item["都道府県名"] === array[1] && item["市区町村名ローマ字"] === array[7] && (array[10].replace(/\d/g, '').replace(" ", '') === item["町域名ローマ字"] || item["町域名ローマ字"] ==="" ));
+
+      if (romeItemFindInclude.length === 1) {
+        additions = romeItemFindInclude[0];
+      } else if (romeItemFindInclude.length === 2) {
+        additions = romeItemFindInclude[1];
+      }
+
+      if (romeItemFindInclude.length===0){
+        const kanaItemFindInclude = postalCodeKanaItems.filter(item => item["都道府県名"] === array[1] && item["市区町村名"] === array[5].replace(HAN2ZEN_REGEXP, match => han2zenMap[match]) && (array[10].replace(/([一二三四五六七八九十]+)/g,"").replace(/(丁目?|番(町|丁)|条|軒|線|(の|ノ)町|地割|号)/, '').replace(" ","") === item["町域名"] || item["町域名"] ==="以下に掲載がない場合" ));
+        if (kanaItemFindInclude.length === 1) {
+          additions = kanaItemFindInclude[0];
+        }else if (kanaItemFindInclude.length === 2) {
+          additions = kanaItemFindInclude[1];
+        } else {
+          console.log("Unexpected number of kanaItemFindInclude: " + kanaItemFindInclude.length);
+        }
+      }
+
+      array.splice(1, 0, additions["郵便番号"]||"");
+    }
+
+
+    db.run('insert into addresses(都道府県コード, 郵便番号, 都道府県名, 都道府県名カナ, 都道府県名ローマ字, 市区町村コード, 市区町村名, 市区町村名カナ, 市区町村名ローマ字, 大字町丁目名, 大字町丁目名カナ, 大字町丁目名ローマ字, 小字・通称名, 緯度, 経度) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', ...array)
   }, 1)
   const gaiku_outfileWriterQueue = async.queue(async str => {
     await gaiku_outfile.write(str)
