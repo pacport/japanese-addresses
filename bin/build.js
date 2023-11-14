@@ -623,29 +623,29 @@ const main = async () => {
 
   const sqliteWriterQueue = async.queue(async array => {
     //If no postal code is available, add
-    if ((/^\d+$/.test(array[1])) === false) {
-      let additions = undefined;
-      const romeItemFindInclude = postalCodeRomeItems.filter(item => item["都道府県名"] === array[1] && item["市区町村名ローマ字"] === array[7] && (array[10].replace(/\d/g, '').replace(" ", '') === item["町域名ローマ字"] || item["町域名ローマ字"] ==="" ));
+      if ((/^\d+$/.test(array[1])) === false) {
+          let additions = undefined;
+          const district_name_rome = array[10].replace(/\d/g, '').replace(/\s/g, '')
+          const romeItemFindInclude = postalCodeRomeItems.filter(item => item["都道府県名"] === array[1] && item["市区町村名ローマ字"] === array[7] && district_name_rome === item["町域名ローマ字"]);
 
-      if (romeItemFindInclude.length === 1) {
-        additions = romeItemFindInclude[0];
-      } else if (romeItemFindInclude.length === 2) {
-        additions = romeItemFindInclude[1];
+          if (romeItemFindInclude.length === 1) {
+              additions = romeItemFindInclude[0];
+          }
+
+          if (!additions) {
+
+              const district_name = array[8].replace(/(一丁目|二丁目|三丁目|四丁目|五丁目|六丁目|七丁目|八丁目|九丁目|十丁目|十一丁目|十二丁目|十三丁目|十四丁目|十五丁目|十六丁目|十七丁目|十八丁目|十九丁目|二十丁目)/, "")
+
+              const kanaItemFindInclude = postalCodeKanaItems.filter(item => item["都道府県名"] === array[1] && item["市区町村名"] === array[5] && district_name === (item["町域名"]));
+              if (kanaItemFindInclude.length === 1) {
+                additions = kanaItemFindInclude[0];
+              } else {
+                  console.log("Unexpected number of kanaItemFindInclude: " + kanaItemFindInclude.length);
+              }
+          }
+
+          array.splice(1, 0, additions["郵便番号"] || "");
       }
-
-      if (romeItemFindInclude.length===0){
-        const kanaItemFindInclude = postalCodeKanaItems.filter(item => item["都道府県名"] === array[1] && item["市区町村名"] === array[5].replace(HAN2ZEN_REGEXP, match => han2zenMap[match]) && (array[10].replace(/([一二三四五六七八九十]+)/g,"").replace(/(丁目?|番(町|丁)|条|軒|線|(の|ノ)町|地割|号)/, '').replace(" ","") === item["町域名"] || item["町域名"] ==="以下に掲載がない場合" ));
-        if (kanaItemFindInclude.length === 1) {
-          additions = kanaItemFindInclude[0];
-        }else if (kanaItemFindInclude.length === 2) {
-          additions = kanaItemFindInclude[1];
-        } else {
-          console.log("Unexpected number of kanaItemFindInclude: " + kanaItemFindInclude.length);
-        }
-      }
-
-      array.splice(1, 0, additions["郵便番号"]||"");
-    }
 
 
     db.run('insert into addresses(都道府県コード, 郵便番号, 都道府県名, 都道府県名カナ, 都道府県名ローマ字, 市区町村コード, 市区町村名, 市区町村名カナ, 市区町村名ローマ字, 大字町丁目名, 大字町丁目名カナ, 大字町丁目名ローマ字, 小字・通称名, 緯度, 経度) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', ...array)
