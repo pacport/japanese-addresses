@@ -578,8 +578,8 @@ const getAddressItems = async (
 
 const main = async () => {
   db.serialize(() => {
-    db.run('drop table if exists addresses2')
-    db.run('create table addresses2(都道府県コード text,郵便番号 text, 都道府県名 text, 都道府県名カナ text, 都道府県名ローマ字 text, 市区町村コード text, 市区町村名 text, 市区町村名カナ text, 市区町村名ローマ字 text, 大字町丁目名 text, 大字町丁目名カナ text, 大字町丁目名ローマ字 text, 小字・通称名 text, 緯度 real, 経度 real)')
+    db.run('drop table if exists addresses')
+    db.run('create table addresses(都道府県コード text,郵便番号 text, 都道府県名 text, 都道府県名カナ text, 都道府県名ローマ字 text, 市区町村コード text, 市区町村名 text, 市区町村名カナ text, 市区町村名ローマ字 text, 大字町丁目名 text, 大字町丁目名カナ text, 大字町丁目名ローマ字 text, 小字・通称名 text, 緯度 real, 経度 real)')
   })
 
   const t0 = performance.now()
@@ -627,10 +627,29 @@ const main = async () => {
             .replace("SHINMAEDA","SHIMMAEDA")
             .replace("IYAMAMINAMI","IIYAMAMINAMI")
             .replace("OGISHINMACHIDORI","OGISHIMMACHIDORI")
+            .replace("AZANASHINOKI","NASHINOKI")
+            .replace("KAMITOBASANOMOTOCHO","KAMITOBAASANOMOTOCHO")
+            .replace("SANMAIBASHI","SAMMAIBASHI")
+            .replace("TATEOKASHINMACHI","TATEOKASHIMMACHI")
+            .replace("HACCHODAI","HATCHODAI")
+            .replace("KANAIWAKAMIECHIZENMACHI","KANAIWAKAMIECHIZEMMACHI")
+            .replace("KAMITOBAMINAMIWANOMOTOCHO","KAMITOBAMINAMIIWANOMOTOCHO")
+            .replace("SHIZUKINIHAMA","SHIZUKINIIHAMA")
+            .replace("TONDASHINMACHI","TONDASHIMMACHI")
+            .replace("TATEOKASHIMINAMIWANOMOTOCHO","TATEOKASHIMINAMIIWANOMOTOCHO")
+            .replace("SENBADORI","SEMBADORI")
+            .replace("SHINMATSUYAMA","SHIMMATSUYAMA")
+            .replace("SHINMATSUYAMAMINAMI","SHIMMATSUYAMAMINAMI")
+            .replace("UCHIHASHINISHI","UCHIHASHINISHI(SONOTA)")
+            .replace("JONANMINAMI","JONAMMINAMI")
             .replace("'","");
+
           const romeItemFindInclude = postalCodeRomeItems.filter(item => item["都道府県名"] === array[1] && item["市区町村名ローマ字"] === array[7] && (district_name_rome === item["町域名ローマ字"].replaceAll(" ", "") || item["町域名ローマ字"]===""));
           if (romeItemFindInclude && romeItemFindInclude.length === 1) {
             additions = romeItemFindInclude[0]
+            if (additions["町域名ローマ字"]===""){
+              console.warn("Data may be incorrect, need to check manually: " + array);
+            }
           }else if (romeItemFindInclude.length === 2){
             additions = romeItemFindInclude[1]
           }else {
@@ -643,7 +662,7 @@ const main = async () => {
           }
       }
 
-    db.run('insert into addresses2(都道府県コード, 郵便番号, 都道府県名, 都道府県名カナ, 都道府県名ローマ字, 市区町村コード, 市区町村名, 市区町村名カナ, 市区町村名ローマ字, 大字町丁目名, 大字町丁目名カナ, 大字町丁目名ローマ字, 小字・通称名, 緯度, 経度) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', ...array)
+    db.run('insert into addresses(都道府県コード, 郵便番号, 都道府県名, 都道府県名カナ, 都道府県名ローマ字, 市区町村コード, 市区町村名, 市区町村名カナ, 市区町村名ローマ字, 大字町丁目名, 大字町丁目名カナ, 大字町丁目名ローマ字, 小字・通称名, 緯度, 経度) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', ...array)
   }, 1)
   const gaiku_outfileWriterQueue = async.queue(async str => {
     await gaiku_outfile.write(str)
